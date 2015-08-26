@@ -45,4 +45,4 @@ Notes:
 
 2. Keep the "classify.py" and "SVMBinary.p" and "SVMMulticlass.p" files in the same directory.
 
-3. Please visit eda.explorer.media.mit.edu to use the web-based version
+3. Please visit eda-explorer.media.mit.edu to use the web-based version
