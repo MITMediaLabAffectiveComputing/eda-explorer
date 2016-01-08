@@ -34,7 +34,7 @@ def interpolateEmptyValues(data):
 
     return data
 
-def interpolateDataTo8Hz(data,sampleRate,startTime):
+def interpolateDataTo8Hz(data,sample_rate,startTime):
 
     if sample_rate<8:
         # Upsample by linear interpolation
@@ -88,7 +88,7 @@ def loadData_Qsensor(filepath):
     data.columns = ['AccelZ','AccelY','AccelX','Battery','Temp','EDA']
 
     # Get Start Time
-    startTime = header_info.iloc[4,0][12:-10])
+    startTime = pd.to_datetime(header_info.iloc[4,0][12:-10])
     
     # Make sure data has a sample rate of 8Hz
     data = interpolateDataTo8Hz(data,sampleRate,startTime)
