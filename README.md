@@ -30,13 +30,11 @@ Note that PickleDirectory is the main directory
 
 Currently there are only 2 classifiers to choose from: Binary or Multiclass
 
-To convert files other than E4 or Affective Q sensor to the Q sensor format for use on the eda-explorer.media.mit.edu site
+To run peak detection:
 ==
-python convertMiscFileToQ.py
+python EDA-Peak-Detection-Script.py
 
-Note that this will be removed in future versions and instead incorporated into the website itself
-
-
+Descriptions of the algorithm settings can be found at http://eda-explorer.media.mit.edu/info/
 
 Notes:
 ===
@@ -45,4 +43,4 @@ Notes:
 
 2. Keep the "classify.py" and "SVMBinary.p" and "SVMMulticlass.p" files in the same directory.
 
-3. Please visit eda-explorer.media.mit.edu to use the web-based version
+3. Please visit eda.explorer.media.mit.edu to use the web-based version
