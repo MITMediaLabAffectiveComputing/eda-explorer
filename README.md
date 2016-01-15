@@ -1,7 +1,7 @@
 eda-explorer
 ============
 
-Scripts to detect artifacts in EDA data
+Scripts to detect artifacts and in electrodermal activity (EDA) data
 
 
 Version 0.4
