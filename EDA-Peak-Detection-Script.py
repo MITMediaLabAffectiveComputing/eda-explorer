@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 
 from load_files import *
 
@@ -160,6 +161,38 @@ def calcPeakFeatures(data,outfile,offset,thresh,start_WT,end_WT):
 
 	featureData.to_csv(outfile)
 
+	return data
+
+# draws a graph of the data with the peaks marked on it
+# assumes that 'data' dataframe already contains the 'peaks' column
+def plotPeaks(data, x_seconds, sampleRate = SAMPLE_RATE):
+	if x_seconds:
+		time_m = np.arange(0,len(data))/float(sampleRate)
+	else:
+		time_m = np.arange(0,len(data))/(sampleRate*60.)
+
+	data_min = min(data['EDA'])
+	data_max = max(data['EDA'])
+
+	#Plot the data with the Peaks marked
+	plt.figure(1,figsize=(20, 5))
+	peak_height = data_max * 1.15
+	data['peaks_plot'] = data['peaks'] * peak_height
+	plt.plot(time_m,data['peaks_plot'],'#4DBD33')
+	#plt.plot(time_m,data['EDA'])
+	plt.plot(time_m,data['filtered_eda'])
+	plt.xlim([0,time_m[-1]])
+	y_min = min(0, data_min) - (data_max - data_min) * 0.1
+	plt.ylim([min(y_min, data_min),peak_height])
+	plt.title('EDA with Peaks marked')
+	plt.ylabel('$\mu$S')
+	if x_seconds:
+		plt.xlabel('Time (s)')
+	else:
+		plt.xlabel('Time (min)')
+
+	plt.show()
+
 def chooseValueOrDefault(str_input, default):
 	if str_input == "":
 		return default
@@ -206,11 +239,24 @@ if __name__ == "__main__":
 
 	print ""
 	print "Okay, finding peaks in file", filepath_confirm, "using threshold =", thresh, "offset =", offset, "rise time =", start_WT, "decay time=", end_WT
-	calcPeakFeatures(data,fullOutputPath,offset,thresh,start_WT,end_WT)
+	peakData = calcPeakFeatures(data,fullOutputPath,offset,thresh,start_WT,end_WT)
 	print "Features computed and saved to "+ fullOutputPath
 
 	# Plotting the data
+	print ""
+	plot_ans = raw_input("Do you want to plot the detected peaks? (y/n): ")
+	if 'y' in plot_ans:
+		secs_ans = raw_input("Would you like the x-axis to be in seconds or minutes? (sec/min): ")
+		if 'sec' in secs_ans:
+			x_seconds=True
+		else:
+			x_seconds=False
+		plotPeaks(peakData,x_seconds)
+	else:
+		print "\tOkay, script will not produce a plot"
 
+
+	print ""
 	print '--------------------------------'
 	print "Please also cite this project:"
 	print "Taylor, S., Jaques, N., Chen, W., Fedor, S., Sano, A., & Picard, R. Automatic identification of artifacts in electrodermal activity data. In Engineering in Medicine and Biology Conference. 2015"
