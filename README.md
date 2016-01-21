@@ -1,7 +1,7 @@
 eda-explorer
 ============
 
-Scripts to detect artifacts and in electrodermal activity (EDA) data
+Scripts to detect artifacts and in electrodermal activity (EDA) data. Note that these scripts are written in Python 2.7.
 
 
 Version 0.4
