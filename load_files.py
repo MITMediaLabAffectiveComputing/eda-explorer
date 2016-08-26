@@ -1,5 +1,42 @@
 import pandas as pd
 import scipy.signal as scisig
+import os
+
+def getInputLoadFile():
+    '''Asks user for type of file and file path. Loads corresponding data.
+
+    OUTPUT:
+        data:   DataFrame, index is a list of timestamps at 8Hz, columns include 
+                AccelZ, AccelY, AccelX, Temp, EDA, filtered_eda
+    '''
+    print "Please enter information about your EDA file... "
+    dataType = raw_input("\tData Type (e4 or q or misc): ")
+    if dataType=='q':
+        filepath = raw_input("\tFile path: ")
+        filepath_confirm = filepath
+        data = loadData_Qsensor(filepath)
+    elif dataType=='e4':
+        filepath = raw_input("\tPath to E4 directory: ")
+        filepath_confirm = os.path.join(filepath,"EDA.csv")
+        data = loadData_E4(filepath)
+    elif dataType=="misc":
+        filepath = raw_input("\tFile path: ")
+        filepath_confirm = filepath
+        data = loadData_misc(filepath)
+    else:
+        print "Error: not a valid file choice"
+
+    return data
+
+def getOutputPath():
+    print ""
+    print "Where would you like to save the computed output file?"
+    outfile = raw_input('\tFile name: ')
+    outputPath = raw_input('\tFile directory (./ for this directory): ')
+    fullOutputPath = os.path.join(outputPath,outfile)
+    if fullOutputPath[-4:] != '.csv':
+        fullOutputPath = fullOutputPath+'.csv'
+    return fullOutputPath
 
 def loadData_Qsensor(filepath):
     '''
