@@ -26,7 +26,7 @@ def getInputLoadFile():
     else:
         print "Error: not a valid file choice"
 
-    return data
+    return data, filepath_confirm
 
 def getOutputPath():
     print ""
@@ -82,9 +82,9 @@ def loadData_Qsensor(filepath):
 
     return data
 
-def loadData_E4(filepath):
+def _loadSingleFile_E4(filepath,list_of_columns, expected_sample_rate,freq):
     # Load data
-    data = pd.DataFrame.from_csv(os.path.join(filepath,'EDA.csv'))
+    data = pd.DataFrame.from_csv(filepath)
     data.reset_index(inplace=True)
     
     # Get the startTime and sample rate
@@ -93,18 +93,35 @@ def loadData_E4(filepath):
     data = data[data.index!=0]
     data.index = data.index-1
     
-    # Reset the data frame assuming 4Hz samplingRate
-    data.columns = ['EDA']
-    if sampleRate !=4:
-        print 'ERROR, NOT SAMPLED AT 4HZ. PROBLEMS WILL OCCUR\n'
-    data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq='250L')
+    # Reset the data frame assuming expected_sample_rate
+    data.columns = list_of_columns
+    if sampleRate != expected_sample_rate:
+        print 'ERROR, NOT SAMPLED AT {0}HZ. PROBLEMS WILL OCCUR\n'.format(expected_sample_rate)
+    #data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq=freq)
 
     # Make sure data has a sample rate of 8Hz
     data = interpolateDataTo8Hz(data,sampleRate,startTime)
 
+    return data
+
+
+def loadData_E4(filepath):
+    # Load EDA data
+    eda_data = _loadSingleFile_E4(os.path.join(filepath,'EDA.csv'),["EDA"],4,"250L")
     # Get the filtered data using a low-pass butterworth filter (cutoff:1hz, fs:8hz, order:6)
-    data['filtered_eda'] =  butter_lowpass_filter(data['EDA'], 1.0, 8, 6)
+    eda_data['filtered_eda'] =  butter_lowpass_filter(eda_data['EDA'], 1.0, 8, 6)
+
+    # Load ACC data
+    acc_data = _loadSingleFile_E4(os.path.join(filepath,'ACC.csv'),["AccelX","AccelY","AccelZ"],32,"31250U")
+    # Scale the accelometer to +-2g
+    acc_data[["AccelX","AccelY","AccelZ"]] = acc_data[["AccelX","AccelY","AccelZ"]]/64.0
+
+    # Load Temperature data
+    temperature_data = _loadSingleFile_E4(os.path.join(filepath,'TEMP.csv'),["Temp"],4,"250L")
     
+    data = eda_data.join(acc_data, how='outer')
+    data = data.join(temperature_data, how='outer')
+
     return data
 
 def loadData_getColNames(data_columns):
@@ -160,7 +177,6 @@ def loadData_misc(filepath):
     return data
 
 def interpolateDataTo8Hz(data,sample_rate,startTime):
-
     if sample_rate<8:
         # Upsample by linear interpolation
         if sample_rate==2:
@@ -172,7 +188,8 @@ def interpolateDataTo8Hz(data,sample_rate,startTime):
         if sample_rate>8:
             # Downsample
             idx_range = range(0,len(data))
-            data = data.iloc[idx_range[0::sample_rate/8]]
+            print 
+            data = data.iloc[idx_range[0::int(sample_rate)/8]]
         # Set the index to be 8Hz
         data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq='125L')
 

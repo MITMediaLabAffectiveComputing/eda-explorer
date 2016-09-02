@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.signal as scisig
 import os
+import matplotlib.pyplot as plt
 
 from load_files import getInputLoadFile, getOutputPath
 
@@ -42,7 +43,7 @@ def computeAllAccelerometerFeatures(data, time_frames):
 																		stillness[start1Hz:end1Hz])
 		features.append(time_frame_feats)
 
-	return features
+	return features, steps, motion
 
 def computeMotion(acc1, acc2, acc3):
 	'''Aggregates 3-axis accelerometer signal into a single motion signal'''
@@ -209,11 +210,11 @@ def inputTimeFrames():
 	'''Allows user to choose the time frames over which they compute accelerometer features.'''
 
 	time_frames = []
-	print "Accelerometer features can be extracted over different time periods during the day."
-	cont = raw_input("If you would like to enter a time period over which to compute features, enter 'y', or press enter to compute features over the entire day.")
+	print "Accelerometer features can be extracted over different time periods."
+	cont = raw_input("If you would like to enter a time period over which to compute features, enter 'y', or press enter to compute features over the entire file.")
 	while cont == 'y' or cont == 'Y':
-		start = int(raw_input("Enter the starting hour of the time period using the 24-hour clock (use -1 for the end of the day):"))
-		end = int(raw_input("Enter the ending hour of the time period using the 24-hour clock (use -1 for the end of the day):"))
+		start = int(raw_input("Enter the starting hour of the time period (hour 0 is when the file starts):"))
+		end = int(raw_input("Enter the ending hour of the time period (hour 0 is when the file starts; use -1 for the end of the file):"))
 		start = getIndexFromTimestamp(int(start))
 		if end != -1:
 			end = getIndexFromTimestamp(int(end))
@@ -222,7 +223,7 @@ def inputTimeFrames():
 		cont = raw_input("To add another time period, enter 'y'. To finish, press enter.")
 
 	if len(time_frames) == 0:
-		time_frames = [[0,-1]] # midnight to 11:59 (the whole day)
+		time_frames = [[0,-1]] # the whole file
 
 	return time_frames
 
@@ -239,16 +240,68 @@ def saveFeaturesToFile(features, time_frames, output_file):
  	of.close()
  	print "Saved features to file", output_file
 
+# draws a graph of the data with the peaks marked on it
+# assumes that 'data' dataframe already contains the 'peaks' column
+def plotSteps(data, x_seconds, sampleRate = SAMPLING_RATE):
+	if x_seconds:
+		time_m = np.arange(0,len(data))/float(sampleRate)
+		realign = 128/(sampleRate)
+	else:
+		time_m = np.arange(0,len(data))/(sampleRate*60.)
+		realign = 128/(sampleRate*60.)
+
+	data_min = data['motion'].min()
+	data_max = data['motion'].max()
+
+	#Plot the data with the Peaks marked
+	plt.figure(1,figsize=(20, 5))
+
+	plt.plot(time_m,data['motion'])
+
+	for i in range(len(data)):
+		if data.iloc[i]["steps"]==1:
+			x_loc = time_m[i] - realign
+			plt.plot([x_loc,x_loc],[data_min,data_max],"k")
+	step_height = data_max * 1.15
+	#data['steps_plot'] = data['steps'] * step_height
+	#plt.plot(time_m,data['steps_plot'],'k')
+
+	plt.xlim([0,time_m[-1]])
+	plt.ylim([data_min-.1,data_max+.1])
+	plt.title('Motion with Detected "Steps" marked')
+	plt.ylabel('g')
+	if x_seconds:
+		plt.xlabel('Time (s)')
+	else:
+		plt.xlabel('Time (min)')
+
+	plt.show()
+
 if __name__ == "__main__":
 	print "This script will extract features related to accelerometer data."
 
-	data = getInputLoadFile()
+	data, filepath_confirm = getInputLoadFile()
 
 	output_path = getOutputPath()
 
 	time_frames = inputTimeFrames()
 
-	features = computeAllAccelerometerFeatures(data, time_frames)
+	features, steps, motion = computeAllAccelerometerFeatures(data, time_frames)
+
+	data["steps"] = steps
+	data["motion"] = motion
 	
 	saveFeaturesToFile(features, time_frames, output_path)
+
+	print ""
+	plot_ans = raw_input("Do you want to plot the detected steps? (y/n): ")
+	if 'y' in plot_ans:
+		secs_ans = raw_input("Would you like the x-axis to be in seconds or minutes? (sec/min): ")
+		if 'sec' in secs_ans:
+			x_seconds=True
+		else:
+			x_seconds=False
+		plotSteps(data, x_seconds)
+	else:
+		print "\tOkay, script will not produce a plot"
 

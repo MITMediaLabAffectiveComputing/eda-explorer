@@ -201,7 +201,7 @@ def chooseValueOrDefault(str_input, default):
 
 if __name__ == "__main__":
 
-	data = getInputLoadFile()
+	data, filepath_confirm = getInputLoadFile()
 	     
 	fullOutputPath = getOutputPath()
 

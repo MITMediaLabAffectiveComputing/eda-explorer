@@ -36,6 +36,12 @@ python EDA-Peak-Detection-Script.py
 
 Descriptions of the algorithm settings can be found at http://eda-explorer.media.mit.edu/info/
 
+To run accelerometer feature extraction:
+==
+python AccelerometerFeatureExtractionScript.py
+
+This file works slightly differently than the others in that it gives summary information over periods of time.
+
 Notes:
 ===
 
