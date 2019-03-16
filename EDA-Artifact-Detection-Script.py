@@ -13,8 +13,6 @@ matplotlib.rcParams['pdf.use14corefonts'] = True
 matplotlib.rcParams['text.usetex'] = True
 
 
-
-
 def getWaveletData(data):
     '''
     This function computes the wavelet coefficients
@@ -29,8 +27,8 @@ def getWaveletData(data):
     startTime = data.index[0]
 
     # Create wavelet dataframes
-    oneSecond = pd.DatetimeIndex(start=startTime, periods=len(data), freq='1s')
-    halfSecond = pd.DatetimeIndex(start=startTime, periods=len(data), freq='500L')
+    oneSecond = pd.date_range(start=startTime, periods=len(data), freq='1s')
+    halfSecond = pd.date_range(start=startTime, periods=len(data), freq='500L')
 
     # Compute wavelets
     cA_n, cD_3, cD_2, cD_1 = pywt.wavedec(data['EDA'], 'Haar', level=3) #3 = 1Hz, 2 = 2Hz, 1=4Hz
@@ -52,25 +50,12 @@ def getWaveletData(data):
 
     return wave1Second,waveHalfSecond
 
+
 def getDerivatives(eda):
     deriv = (eda[1:-1] + eda[2:])/ 2. - (eda[1:-1] + eda[:-2])/ 2.
     second_deriv = eda[2:] - 2*eda[1:-1] + eda[:-2]
     return deriv,second_deriv
 
-def get3MaxDerivatives(eda,num_max=3):
-    deriv, second_deriv = getDerivatives(eda)
-    d = copy.deepcopy(deriv)
-    d2 = copy.deepcopy(second_deriv)
-    max_indices = []
-    for i in range(num_max):
-        maxd_idx = np.nanargmax(abs(d))
-        max_indices.append(maxd_idx)
-        d[maxd_idx] = 0
-        max2d_idx = np.nanargmax(abs(d2))
-        max_indices.append(max2d_idx)
-        d2[max2d_idx] = 0
-    
-    return max_indices, abs(deriv), abs(second_deriv)
 
 def getDerivStats(eda):
     deriv, second_deriv = getDerivatives(eda)
@@ -85,14 +70,16 @@ def getDerivStats(eda):
     
     return maxd,mind,maxabsd,avgabsd,max2d,min2d,maxabs2d,avgabs2d
 
+
 def getStats(data):
-    eda = data['EDA'].as_matrix()
-    filt = data['filtered_eda'].as_matrix()
+    eda = data['EDA'].values
+    filt = data['filtered_eda'].values
     maxd,mind,maxabsd,avgabsd,max2d,min2d,maxabs2d,avgabs2d = getDerivStats(eda)
     maxd_f,mind_f,maxabsd_f,avgabsd_f,max2d_f,min2d_f,maxabs2d_f,avgabs2d_f = getDerivStats(filt)
     amp = np.mean(eda)
     amp_f = np.mean(filt)
     return amp, maxd,mind,maxabsd,avgabsd,max2d,min2d,maxabs2d,avgabs2d,amp_f,maxd_f,mind_f,maxabsd_f,avgabsd_f,max2d_f,min2d_f,maxabs2d_f,avgabs2d_f
+
 
 def computeWaveletFeatures(waveDF):
     maxList = waveDF.max().tolist()
@@ -103,10 +90,12 @@ def computeWaveletFeatures(waveDF):
 
     return maxList,meanList,stdList,medianList,aboveZeroList
 
+
 def getWavelet(wave1Second,waveHalfSecond):
     max_1,mean_1,std_1,median_1,aboveZero_1 = computeWaveletFeatures(wave1Second)
     max_H,mean_H,std_H,median_H,aboveZero_H = computeWaveletFeatures(waveHalfSecond)
     return max_1,mean_1,std_1,median_1,aboveZero_1,max_H,mean_H,std_H,median_H,aboveZero_H
+
 
 def getFeatures(data,w1,wH):
     # Get DerivStats
@@ -126,6 +115,7 @@ def getFeatures(data,w1,wH):
         print("NaN")
 
     return list(all_feat)
+
 
 def createFeatureDF(data):
     '''
@@ -160,6 +150,7 @@ def createFeatureDF(data):
         features.iloc[i] = getFeatures(this_data,this_w1,this_w2)
     return features
 
+
 def classifyEpochs(features,featureNames,classifierName):
     '''
     This function takes the full features DataFrame and classifies each 5 second epoch into artifact, questionable, or clean
@@ -174,7 +165,7 @@ def classifyEpochs(features,featureNames,classifierName):
     '''
     # Only get relevant features
     features = features[featureNames]
-    X = features[featureNames].as_matrix()
+    X = features[featureNames].values
 
     # Classify each 5 second epoch and put into DataFrame
     if 'Binary' in classifierName:
@@ -183,6 +174,7 @@ def classifyEpochs(features,featureNames,classifierName):
         featuresLabels = predict_multiclass_classifier(X)
 
     return featuresLabels
+
 
 def getSVMFeatures(key):
     '''
@@ -203,7 +195,8 @@ def getSVMFeatures(key):
     else:
         print('Error!! Invalid key, choose "Binary" or "Multiclass"\n\n')
         return
-    
+
+
 def classify(filepath,classifierList,loadDataFunction):
     '''
     This function wraps other functions in order to load, classify, and return the label for each 5 second epoch of Q sensor data.
@@ -255,6 +248,7 @@ def classify(filepath,classifierList,loadDataFunction):
             labels[(h*12*60):(h*12*60+temp_labels.shape[0]),i] = temp_labels
 
     return labels,data
+
 
 def plotData(data,labels,classifierList,filteredPlot=0,secondsPlot=0):
     '''
@@ -311,7 +305,7 @@ def plotData(data,labels,classifierList,filteredPlot=0,secondsPlot=0):
 
         # Plot filtered data if requested
         if filteredPlot:
-            ax.plot(time_m-.625/scale,data['filtered_eda']) 
+            ax.plot(time_m-.625/scale,data['filtered_eda'], c='g')
             plt.legend(['Raw SC','Filtered SC'],loc=0)
 
         # Label and Title each subplot
@@ -325,17 +319,27 @@ def plotData(data,labels,classifierList,filteredPlot=0,secondsPlot=0):
         plt.xlabel('Time (min)')
 
     # Display the plot
+    plt.subplots_adjust(hspace=.3)
     plt.show()
     return
+
 
 if __name__ == "__main__":
     numClassifiers = int(get_user_input('Would you like 1 classifier (Binary or Multiclass) or both (enter 1 or 2): '))
 
     # Create list of classifiers
     if numClassifiers==1:
-        classifierList= [get_user_input("Name of classifier (Binary or Multiclass): ")]
+        temp_clf = int(get_user_input("Select a classifier:\n1: Binary\n2: Multiclass\n:"))
+        while temp_clf != 1 and temp_clf !=2:
+            temp_clf = get_user_input("Something went wrong. Enter the number 1 or 2.\n Select a classifier:\n1: Binary\n2: Multiclass):")
+        if temp_clf == 1:
+            print('Binary Classifier selected')
+            classifierList = ['Binary']
+        elif temp_clf == 2:
+            print('Multiclass Classifier selected')
+            classifierList = ['Multiclass']
     else:
-        classifierList = ['Binary','Multiclass']
+        classifierList = ['Binary', 'Multiclass']
 
     # Classify the data
     dataType = get_user_input("Data Type (e4 or q or misc): ")
@@ -391,7 +395,9 @@ if __name__ == "__main__":
         if fullOutputPath[-4:] != '.csv':
             fullOutputPath = fullOutputPath+'.csv'
 
-        featureLabels = pd.DataFrame(labels,index=pd.DatetimeIndex(start=data.index[0],periods=len(labels),freq='5s'),columns=classifierList)
+        featureLabels = pd.DataFrame(labels, index=pd.date_range(start=data.index[0], periods=len(labels), freq='5s'),
+                                     columns=classifierList)
+
 
         featureLabels.to_csv(fullOutputPath)
 

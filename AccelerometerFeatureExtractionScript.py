@@ -37,7 +37,7 @@ def computeAllAccelerometerFeatures(data, time_frames):
         start = time_frame[0]
         end = time_frame[1]
         start1Hz = int(start / SAMPLING_RATE)
-        end1Hz = int(end / SAMPLING_RATE)
+        end1Hz = end if end == -1 else int(end / SAMPLING_RATE)
         if DEBUG: print("\t\tcomputing features for time frame. Start index: "+ str(start)+ " end index: "+ str(end))
 
         time_frame_feats = computeAccelerometerFeaturesOverOneTimeFrame(motion[start:end],
@@ -103,9 +103,9 @@ def computeStillness(motion):
     second_stillness = [0]*SECONDS_IN_DAY
 
     for i in range(num_minutes_in_day):
-        hours_start = i / 60
+        hours_start = int(i / 60)
         mins_start = i % 60
-        hours_end = (i+1) / 60
+        hours_end = int((i+1) / 60)
         mins_end = (i+1) % 60
 
         start_idx = getIndexFromTimestamp(hours_start, mins_start)
@@ -160,10 +160,10 @@ def computeStepFeatures(steps,stillness):
 
     #ensure length of step difference array is the same so we can get the actual locations of step differences
     timed_step_diff = np.empty(len(steps)) * np.nan
-    timed_step_diff[step_indices] = diff
+    timed_step_diff[step_indices[:len(diff)]] = diff
 
     signal_length_1s = len(stillness)
-    signal_length_1min = signal_length_1s / 60
+    signal_length_1min = int(signal_length_1s / 60)
 
     # if there aren't enough steps during this period, cannot accurately compute mean step diff
     if len(timed_step_diff) < signal_length_1min:
@@ -175,7 +175,7 @@ def computeStepFeatures(steps,stillness):
     movement_indices = [i for i in range(len(agg_stillness)) if agg_stillness[i] == 0.0]
     step_diff_during_movement = agg_step_diff[movement_indices]
 
-    return [sum_steps,np.nanmean(step_diff_during_movement)]
+    return [sum_steps,round(np.nanmean(step_diff_during_movement),10)]
 
 def countStillness(stillness):
     '''Counts the total percentage of time spent still over a period
@@ -189,7 +189,7 @@ def countStillness(stillness):
 
 def aggregateSignal(signal, new_signal_length, agg_method='sum'):
     new_signal = np.zeros(new_signal_length)
-    samples_per_bucket = len(signal) / new_signal_length
+    samples_per_bucket = int(len(signal) / new_signal_length)
 
     #the new signal length must be large enough that there is at least 1 sample per bucket
     assert(samples_per_bucket > 0)

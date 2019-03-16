@@ -91,8 +91,7 @@ def loadData_Qsensor(filepath):
 
 def _loadSingleFile_E4(filepath,list_of_columns, expected_sample_rate,freq):
     # Load data
-    data = pd.DataFrame.from_csv(filepath)
-    data.reset_index(inplace=True)
+    data = pd.read_csv(filepath)
     
     # Get the startTime and sample rate
     startTime = pd.to_datetime(float(data.columns.values[0]),unit="s")
@@ -104,7 +103,6 @@ def _loadSingleFile_E4(filepath,list_of_columns, expected_sample_rate,freq):
     data.columns = list_of_columns
     if sampleRate != expected_sample_rate:
         print('ERROR, NOT SAMPLED AT {0}HZ. PROBLEMS WILL OCCUR\n'.format(expected_sample_rate))
-    #data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq=freq)
 
     # Make sure data has a sample rate of 8Hz
     data = interpolateDataTo8Hz(data,sampleRate,startTime)
@@ -167,7 +165,7 @@ def loadData_getColNames(data_columns):
 
 def loadData_misc(filepath):
     # Load data
-    data = pd.DataFrame.from_csv(filepath)
+    data = pd.read_csv(filepath)
 
     # Get the correct colnames
     sampleRate, startTime, new_colnames = loadData_getColNames(data.columns.values)
@@ -187,9 +185,9 @@ def interpolateDataTo8Hz(data,sample_rate,startTime):
     if sample_rate<8:
         # Upsample by linear interpolation
         if sample_rate==2:
-            data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq='500L')
+            data.index = pd.date_range(start=startTime, periods=len(data), freq='500L')
         elif sample_rate==4:
-            data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq='250L')
+            data.index = pd.date_range(start=startTime, periods=len(data), freq='250L')
         data = data.resample("125L").mean()
     else:
         if sample_rate>8:
@@ -197,9 +195,8 @@ def interpolateDataTo8Hz(data,sample_rate,startTime):
             idx_range = list(range(0,len(data))) # TODO: double check this one
             data = data.iloc[idx_range[0::int(int(sample_rate)/8)]]
         # Set the index to be 8Hz
-        data.index = pd.DatetimeIndex(start=startTime,periods = len(data),freq='125L')
+        data.index = pd.date_range(start=startTime, periods=len(data), freq='125L')
 
-    print(type(data))
     # Interpolate all empty values
     data = interpolateEmptyValues(data)
     return data
@@ -207,7 +204,7 @@ def interpolateDataTo8Hz(data,sample_rate,startTime):
 def interpolateEmptyValues(data):
     cols = data.columns.values
     for c in cols:
-        data[c] = data[c].interpolate()
+        data.loc[:, c] = data[c].interpolate()
 
     return data
 

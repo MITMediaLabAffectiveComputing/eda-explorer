@@ -31,7 +31,7 @@ def findPeaks(data, offset, start_WT, end_WT, thres=0, sampleRate=SAMPLE_RATE):
         max_deriv:           list of floats, max derivative within 1 second of apex of SCR
 
     '''
-    EDA_deriv = data['filtered_eda'][1:].as_matrix() - data['filtered_eda'][:-1].as_matrix()
+    EDA_deriv = data['filtered_eda'][1:].values - data['filtered_eda'][:-1].values
     peaks = np.zeros(len(EDA_deriv))
     peak_sign = np.sign(EDA_deriv)
     for i in range(int(offset), int(len(EDA_deriv) - offset)):
