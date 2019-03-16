@@ -2,15 +2,18 @@ import pandas as pd
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import imp
 import pywt
 import os
 
 from load_files import *
+from ArtifactClassifiers import predict_binary_classifier, predict_multiclass_classifier
 
 matplotlib.rcParams['ps.useafm'] = True
 matplotlib.rcParams['pdf.use14corefonts'] = True
 matplotlib.rcParams['text.usetex'] = True
+
+
+
 
 def getWaveletData(data):
     '''
@@ -117,10 +120,10 @@ def getFeatures(data,w1,wH):
     all_feat = np.hstack([statFeat,waveletFeat])
     
     if np.Inf in all_feat:
-        print "Inf"
+        print("Inf")
     
     if np.NaN in all_feat:
-        print "NaN"
+        print("NaN")
 
     return list(all_feat)
 
@@ -157,63 +160,57 @@ def createFeatureDF(data):
         features.iloc[i] = getFeatures(this_data,this_w1,this_w2)
     return features
 
-def classifyEpochs(features,featureNames,svmClassifierPath):
+def classifyEpochs(features,featureNames,classifierName):
     '''
     This function takes the full features DataFrame and classifies each 5 second epoch into artifact, questionable, or clean
 
     INPUTS:
         features:           DataFrame, index is a list of timestamps for each 5 seconds, contains all the features
         featureNames:       list of Strings, subset of feature names needed for classification
-        svmClassifierPath:  string, path to pickled SVM 
+        classifierName:     string, type of SVM (binary or multiclass)
 
     OUTPUTS:
         labels:             Series, index is a list of timestamps for each 5 seconds, values of -1, 0, or 1 for artifact, questionable, or clean
     '''
     # Only get relevant features
     features = features[featureNames]
-    
-    # Load classifier
-    classifier = svm.SVM()
-    classifier.loadClassifierFromFile(svmClassifierPath)
-    
-    # 
     X = features[featureNames].as_matrix()
-    
+
     # Classify each 5 second epoch and put into DataFrame
-    featuresLabels = classifier.predict(X)
+    if 'Binary' in classifierName:
+        featuresLabels = predict_binary_classifier(X)
+    elif 'Multi' in classifierName:
+        featuresLabels = predict_multiclass_classifier(X)
+
     return featuresLabels
 
-def getSVMPickle(key):
+def getSVMFeatures(key):
     '''
-    This returns the name of the pickledSVM and the list of relevant features
+    This returns the list of relevant features
 
     INPUT:
         key:                string, either "Binary" or "Multiclass"
 
     OUTPUT:
-        svmPickleName:      string, filename to pickled SVM 
         featureList:        list of Strings, subset of feature names needed for classification
     '''
     if key == "Binary":
-        return "SVMBinary.p",['raw_amp','raw_maxabsd','raw_max2d','raw_avgabs2d','filt_amp','filt_min2d','filt_maxabs2d','max_1s_1',
+        return ['raw_amp','raw_maxabsd','raw_max2d','raw_avgabs2d','filt_amp','filt_min2d','filt_maxabs2d','max_1s_1',
                                 'mean_1s_1','std_1s_1','std_1s_2','std_1s_3','median_1s_3']
     elif key == "Multiclass":
-        return "SVMMulticlass.p",['filt_maxabs2d','filt_min2d','std_1s_1','raw_max2d','raw_amp','max_1s_1','raw_maxabs2d','raw_avgabs2d',
+        return ['filt_maxabs2d','filt_min2d','std_1s_1','raw_max2d','raw_amp','max_1s_1','raw_maxabs2d','raw_avgabs2d',
                                     'filt_max2d','filt_amp']
     else:
-        print 'Error!! Invalid key, choose "Binary" or "Multiclass"'
-        print 
-        print 
+        print('Error!! Invalid key, choose "Binary" or "Multiclass"\n\n')
         return
     
-def classify(filepath,classifierList,pickleDirectory,loadDataFunction):
+def classify(filepath,classifierList,loadDataFunction):
     '''
     This function wraps other functions in order to load, classify, and return the label for each 5 second epoch of Q sensor data.
 
     INPUT:
         filepath:               string, path to input file          
-        classifierKey:          list of strings, either "Binary" or "Multiclass"
-        pickleDirectory:        string, path to pickle directory
+        classifierList:         list of strings, either "Binary" or "Multiclass"
         loadDataFunction:       function, loads sensor data and returns data at 8Hz in a pandas DataFrame indexed by timestamp and at least has 'EDA' column and 'filtered_eda' column
     OUTPUT:
         featureLabels:          Series, index is a list of timestamps for each 5 seconds, values of -1, 0, or 1 for artifact, questionable, or clean
@@ -227,11 +224,9 @@ def classify(filepath,classifierList,pickleDirectory,loadDataFunction):
     data = loadDataFunction(filepath)
 
     # Get pickle List and featureNames list
-    pickleNameList = ['']*len(classifierList)
     featureNameList = [[]]*len(classifierList)
     for i in range(len(classifierList)):
-        pickleName, featureNames = getSVMPickle(classifierList[i])
-        pickleNameList[i]=pickleName
+        featureNames = getSVMFeatures(classifierList[i])
         featureNameList[i]=featureNames
 
     # Get the number of data points, hours, and labels
@@ -252,11 +247,11 @@ def classify(filepath,classifierList,pickleDirectory,loadDataFunction):
 
         for i in range(len(classifierList)):
             # Get correct feature names for classifier
-            pickleName = pickleNameList[i]
+            classifierName = classifierList[i]
             featureNames = featureNameList[i]
             
             # Label each 5 second epoch
-            temp_labels = classifyEpochs(features,featureNames,os.path.join(pickleDirectory,pickleName))
+            temp_labels = classifyEpochs(features, featureNames, classifierName)
             labels[(h*12*60):(h*12*60+temp_labels.shape[0]),i] = temp_labels
 
     return labels,data
@@ -334,54 +329,45 @@ def plotData(data,labels,classifierList,filteredPlot=0,secondsPlot=0):
     return
 
 if __name__ == "__main__":
-    pickleDirectory = raw_input('Pickle Directory (type ./ for current directory): ')
-
-    # Load SVM Directory
-    svmFilePath = os.path.join(pickleDirectory,'classify.py')
-    print "Loading SVM file from "+ svmFilePath
-    svm = imp.load_source('SVM',svmFilePath)
-
-    numClassifiers = int(raw_input('Would you like 1 classifier (Binary or Multiclass) or both (enter 1 or 2): '))
+    numClassifiers = int(get_user_input('Would you like 1 classifier (Binary or Multiclass) or both (enter 1 or 2): '))
 
     # Create list of classifiers
     if numClassifiers==1:
-        classifierList= [raw_input("Name of classifier (Binary or Multiclass): ")]
+        classifierList= [get_user_input("Name of classifier (Binary or Multiclass): ")]
     else:
         classifierList = ['Binary','Multiclass']
 
     # Classify the data
-    dataType = raw_input("Data Type (e4 or q or misc): ")
+    dataType = get_user_input("Data Type (e4 or q or misc): ")
     if dataType=='q':
-        filepath = raw_input("Filepath: ")
-        print "Classifying data for " + filepath
-        labels,data = classify(filepath,classifierList,pickleDirectory,loadData_Qsensor)
+        filepath = get_user_input("Filepath: ")
+        print("Classifying data for " + filepath)
+        labels,data = classify(filepath,classifierList,loadData_Qsensor)
     elif dataType=='e4':
-        filepath = raw_input("Path to E4 directory: ")
-        print "Classifying data for " + os.path.join(filepath,"EDA.csv")
-        labels,data = classify(filepath,classifierList,pickleDirectory,loadData_E4)
+        filepath = get_user_input("Path to E4 directory: ")
+        print("Classifying data for " + os.path.join(filepath,"EDA.csv"))
+        labels,data = classify(filepath,classifierList,loadData_E4)
     elif dataType=="misc":
-        filepath = raw_input("Filepath: ")
-        print "Classifying data for " + filepath
-        labels,data = classify(filepath,classifierList,pickleDirectory,loadData_misc)
+        filepath = get_user_input("Filepath: ")
+        print("Classifying data for " + filepath)
+        labels,data = classify(filepath,classifierList,loadData_misc)
     else:
-        print "We currently don't support that type of file."
+        print("We currently don't support that type of file.")
          
 
-
-
     # Plotting the data
-    plotDataInput = raw_input('Do you want to plot the labels? (y/n): ')
+    plotDataInput = get_user_input('Do you want to plot the labels? (y/n): ')
 
     if plotDataInput=='y':
         # Include filter plot?
-        filteredPlot = raw_input('Would you like to include filtered data in your plot? (y/n): ')
+        filteredPlot = get_user_input('Would you like to include filtered data in your plot? (y/n): ')
         if filteredPlot=='y':
             filteredPlot=1
         else:
             filteredPlot=0
 
         # X axis in seconds?
-        secondsPlot = raw_input('Would you like the x-axis to be in seconds or minutes? (sec/min): ')
+        secondsPlot = get_user_input('Would you like the x-axis to be in seconds or minutes? (sec/min): ')
         if secondsPlot=='sec':
             secondsPlot=1
         else:
@@ -390,15 +376,15 @@ if __name__ == "__main__":
         # Plot Data
         plotData(data,labels,classifierList,filteredPlot,secondsPlot)
 
-        print "Remember! Red is for epochs with artifact, grey is for epochs that are questionable, and no shading is for clean epochs"
+        print("Remember! Red is for epochs with artifact, grey is for epochs that are questionable, and no shading is for clean epochs")
     
 
     # Saving the data
-    saveDataInput = raw_input('Do you want to save the labels? (y/n): ')
+    saveDataInput = get_user_input('Do you want to save the labels? (y/n): ')
     
     if saveDataInput=='y':
-        outputPath = raw_input('Output directory: ')
-        outputLabelFilename= raw_input('Output filename: ')
+        outputPath = get_user_input('Output directory: ')
+        outputLabelFilename= get_user_input('Output filename: ')
 
         # Save labels
         fullOutputPath = os.path.join(outputPath,outputLabelFilename)
@@ -409,14 +395,13 @@ if __name__ == "__main__":
 
         featureLabels.to_csv(fullOutputPath)
 
-        print "Labels saved to "+ fullOutputPath
-        #print "Remember! The first column is timestamps and the second column is the labels (-1 for artifact, 0 for questionable, 1 for clean)"
-    
+        print("Labels saved to " + fullOutputPath)
+        print("Remember! The first column is timestamps and the second column is the labels (-1 for artifact, 0 for questionable, 1 for clean)")
 
-    print '--------------------------------'
-    print "Please also cite this project:"
-    print "Taylor, S., Jaques, N., Chen, W., Fedor, S., Sano, A., & Picard, R. Automatic identification of artifacts in electrodermal activity data. In Engineering in Medicine and Biology Conference. 2015"
-    print '--------------------------------'
+    print('--------------------------------')
+    print("Please also cite this project:")
+    print("Taylor, S., Jaques, N., Chen, W., Fedor, S., Sano, A., & Picard, R. Automatic identification of artifacts in electrodermal activity data. In Engineering in Medicine and Biology Conference. 2015")
+    print('--------------------------------')
 
 
 
