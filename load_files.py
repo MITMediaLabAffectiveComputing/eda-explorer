@@ -127,7 +127,10 @@ def loadData_E4(filepath):
     data = eda_data.join(acc_data, how='outer')
     data = data.join(temperature_data, how='outer')
 
-    return data
+    # E4 sometimes records different length files - adjust as necessary
+    min_length = min(len(acc_data), len(eda_data), len(temperature_data))
+
+    return data[:min_length]
 
 def loadData_getColNames(data_columns):
     print("Here are the data columns of your file: ")
