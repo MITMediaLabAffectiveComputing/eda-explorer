@@ -153,6 +153,7 @@ def calcPeakFeatures(data,outfile,offset,thresh,start_WT,end_WT):
 	data['decay_time'] = returnedPeakData[8]
 	data['SCR_width'] = returnedPeakData[9]
 
+	# To keep all filtered data remove this line
 	featureData = data[data.peaks==1][['EDA','rise_time','max_deriv','amp','decay_time','SCR_width']]
 
 	# Replace 0s with NaN, this is where the 50% of the peak was not found, too close to the next peak
