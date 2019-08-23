@@ -4,6 +4,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pywt
 import os
+import datetime
 
 from load_files import *
 from ArtifactClassifiers import predict_binary_classifier, predict_multiclass_classifier
@@ -398,6 +399,17 @@ if __name__ == "__main__":
         featureLabels = pd.DataFrame(labels, index=pd.date_range(start=data.index[0], periods=len(labels), freq='5s'),
                                      columns=classifierList)
 
+        featureLabels.reset_index(inplace=True)
+        featureLabels.rename(columns={'index':'StartTime'}, inplace=True)
+        featureLabels['EndTime'] = featureLabels['StartTime']+datetime.timedelta(seconds=5)
+        featureLabels.index.name = 'EpochNum'
+
+        cols = ['StartTime', 'EndTime']
+        cols.extend(classifierList)
+
+        featureLabels = featureLabels[cols]
+        featureLabels.rename(columns={'Binary': 'BinaryLabels', 'Multiclass': 'MulticlassLabels'},
+                             inplace=True)
 
         featureLabels.to_csv(fullOutputPath)
 
