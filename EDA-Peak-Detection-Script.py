@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import pprint
 
-from load_files import *
+from load_files import getInputLoadFile, get_user_input, getOutputPath
 
 SAMPLE_RATE = 8
 
@@ -155,7 +155,7 @@ def calcPeakFeatures(data,outfile,offset,thresh,start_WT,end_WT):
     data['SCR_width'] = returnedPeakData[9]
 
     # To keep all filtered data remove this line
-	featureData = data[data.peaks==1][['EDA','rise_time','max_deriv','amp','decay_time','SCR_width']]
+    featureData = data[data.peaks==1][['EDA','rise_time','max_deriv','amp','decay_time','SCR_width']]
 
     # Replace 0s with NaN, this is where the 50% of the peak was not found, too close to the next peak
     featureData[['SCR_width','decay_time']]=featureData[['SCR_width','decay_time']].replace(0, np.nan)

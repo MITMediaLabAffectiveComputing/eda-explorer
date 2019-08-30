@@ -6,7 +6,7 @@ import pywt
 import os
 import datetime
 
-from load_files import *
+from load_files import getInputLoadFile, get_user_input
 from ArtifactClassifiers import predict_binary_classifier, predict_multiclass_classifier
 
 matplotlib.rcParams['ps.useafm'] = True
@@ -198,14 +198,12 @@ def getSVMFeatures(key):
         return
 
 
-def classify(filepath,classifierList,loadDataFunction):
+def classify(classifierList):
     '''
     This function wraps other functions in order to load, classify, and return the label for each 5 second epoch of Q sensor data.
 
     INPUT:
-        filepath:               string, path to input file          
         classifierList:         list of strings, either "Binary" or "Multiclass"
-        loadDataFunction:       function, loads sensor data and returns data at 8Hz in a pandas DataFrame indexed by timestamp and at least has 'EDA' column and 'filtered_eda' column
     OUTPUT:
         featureLabels:          Series, index is a list of timestamps for each 5 seconds, values of -1, 0, or 1 for artifact, questionable, or clean
         data:                   DataFrame, only output if fullFeatureOutput=1, index is a list of timestamps at 8Hz, columns include AccelZ, AccelY, AccelX, Temp, EDA, filtered_eda
@@ -215,7 +213,7 @@ def classify(filepath,classifierList,loadDataFunction):
     fiveSec = 8*5
 
     # Load data
-    data = loadDataFunction(filepath)
+    data, _ = getInputLoadFile()
 
     # Get pickle List and featureNames list
     featureNameList = [[]]*len(classifierList)
@@ -343,22 +341,7 @@ if __name__ == "__main__":
         classifierList = ['Binary', 'Multiclass']
 
     # Classify the data
-    dataType = get_user_input("Data Type (e4 or q or misc): ")
-    if dataType=='q':
-        filepath = get_user_input("Filepath: ")
-        print("Classifying data for " + filepath)
-        labels,data = classify(filepath,classifierList,loadData_Qsensor)
-    elif dataType=='e4':
-        filepath = get_user_input("Path to E4 directory: ")
-        print("Classifying data for " + os.path.join(filepath,"EDA.csv"))
-        labels,data = classify(filepath,classifierList,loadData_E4)
-    elif dataType=="misc":
-        filepath = get_user_input("Filepath: ")
-        print("Classifying data for " + filepath)
-        labels,data = classify(filepath,classifierList,loadData_misc)
-    else:
-        print("We currently don't support that type of file.")
-         
+    labels, data = classify(classifierList)
 
     # Plotting the data
     plotDataInput = get_user_input('Do you want to plot the labels? (y/n): ')

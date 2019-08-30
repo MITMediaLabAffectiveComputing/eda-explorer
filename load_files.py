@@ -19,7 +19,7 @@ def getInputLoadFile():
                 AccelZ, AccelY, AccelX, Temp, EDA, filtered_eda
     '''
     print("Please enter information about your EDA file... ")
-    dataType = get_user_input("\tData Type (e4 or q or misc): ")
+    dataType = get_user_input("\tData Type (e4, q, shimmer, or misc): ")
     if dataType=='q':
         filepath = get_user_input("\tFile path: ")
         filepath_confirm = filepath
@@ -28,6 +28,10 @@ def getInputLoadFile():
         filepath = get_user_input("\tPath to E4 directory: ")
         filepath_confirm = os.path.join(filepath,"EDA.csv")
         data = loadData_E4(filepath)
+    elif dataType=='shimmer':
+        filepath = get_user_input("\tFile path: ")
+        filepath_confirm = filepath
+        data = loadData_shimmer(filepath)
     elif dataType=="misc":
         filepath = get_user_input("\tFile path: ")
         filepath_confirm = filepath
@@ -49,7 +53,7 @@ def getOutputPath():
 
 def loadData_Qsensor(filepath):
     '''
-    This function loads the Q sensor data, uses a lowpass butterworth filter on the EDA signal, and computes the wavelet coefficients
+    This function loads the Q sensor data, uses a lowpass butterworth filter on the EDA signal
     Note: currently assumes sampling rate of 8hz, 16hz, 32hz; if sampling rate is 16hz or 32hz the signal is downsampled
 
     INPUT:
@@ -131,6 +135,43 @@ def loadData_E4(filepath):
     min_length = min(len(acc_data), len(eda_data), len(temperature_data))
 
     return data[:min_length]
+
+def loadData_shimmer(filepath):
+    data = pd.read_csv(filepath, sep='\t', skiprows=(0,1))
+
+    orig_cols = data.columns
+    rename_cols = {}
+
+    for search, new_col in [['Timestamp','Timestamp'],
+                            ['Accel_LN_X', 'AccelX'], ['Accel_LN_Y', 'AccelY'], ['Accel_LN_Z', 'AccelZ'],
+                            ['Skin_Conductance', 'EDA']]:
+        orig = [c for c in orig_cols if search in c]
+        if len(orig) == 0:
+            continue
+        rename_cols[orig[0]] = new_col
+
+    data.rename(columns=rename_cols, inplace=True)
+
+    # TODO: Assuming no temperature is recorded
+    data['Temp'] = 0
+
+    # Drop the units row and unnecessary columns
+    data = data[data['Timestamp'] != 'ms']
+    data.index = pd.to_datetime(data['Timestamp'], unit='ms')
+    data = data[['AccelZ', 'AccelY', 'AccelX', 'Temp', 'EDA']]
+
+    for c in ['AccelZ', 'AccelY', 'AccelX', 'Temp', 'EDA']:
+        data[c] = pd.to_numeric(data[c])
+
+    # Convert to 8Hz
+    data = data.resample("125L").mean()
+    data.interpolate(inplace=True)
+
+    # Get the filtered data using a low-pass butterworth filter (cutoff:1hz, fs:8hz, order:6)
+    data['filtered_eda'] = butter_lowpass_filter(data['EDA'], 1.0, 8, 6)
+
+    return data
+
 
 def loadData_getColNames(data_columns):
     print("Here are the data columns of your file: ")
