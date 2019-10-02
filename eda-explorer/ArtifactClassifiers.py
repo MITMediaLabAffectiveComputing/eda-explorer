@@ -576,7 +576,7 @@ if __name__ == '__main__':
     binary_predictions = predict_binary_classifier(binary_test_data)
 
     import pickle
-    f2 = open('/Users/sarataylor/Dev/eda-explorer-public/SVMBinary.p', 'rb')
+    f2 = open('/Users/sarataylor/Dev/eda-explorer-explorer-public/SVMBinary.p', 'rb')
     s2 = f2.read()
     clf = pickle.loads(s2)
 
@@ -591,7 +591,7 @@ if __name__ == '__main__':
 
     multi_predictions = predict_multiclass_classifier(test_data)
 
-    f2 = open('/Users/sarataylor/Dev/eda-explorer-public/SVMMulticlass.p', 'rb')
+    f2 = open('/Users/sarataylor/Dev/eda-explorer-explorer-public/SVMMulticlass.p', 'rb')
     s2 = f2.read()
     clf = pickle.loads(s2)
 
