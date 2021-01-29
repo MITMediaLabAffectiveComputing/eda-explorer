@@ -6,12 +6,12 @@ import pywt
 import os
 import datetime
 
-from load_files import getInputLoadFile, get_user_input
-from ArtifactClassifiers import predict_binary_classifier, predict_multiclass_classifier
+from happyai.eda_explorer.load_files import getInputLoadFile, get_user_input
+from happyai.eda_explorer.ArtifactClassifiers import predict_binary_classifier, predict_multiclass_classifier
 
-matplotlib.rcParams['ps.useafm'] = True
-matplotlib.rcParams['pdf.use14corefonts'] = True
-matplotlib.rcParams['text.usetex'] = True
+# matplotlib.rcParams['ps.useafm'] = True
+# matplotlib.rcParams['pdf.use14corefonts'] = True
+# matplotlib.rcParams['text.usetex'] = True
 
 
 def getWaveletData(data):
@@ -198,7 +198,9 @@ def getSVMFeatures(key):
         return
 
 
-def classify(classifierList):
+def classify(data):
+
+
     '''
     This function wraps other functions in order to load, classify, and return the label for each 5 second epoch of Q sensor data.
 
@@ -208,12 +210,14 @@ def classify(classifierList):
         featureLabels:          Series, index is a list of timestamps for each 5 seconds, values of -1, 0, or 1 for artifact, questionable, or clean
         data:                   DataFrame, only output if fullFeatureOutput=1, index is a list of timestamps at 8Hz, columns include AccelZ, AccelY, AccelX, Temp, EDA, filtered_eda
     '''
+
+    classifierList = ['Binary']
     # Constants
     oneHour = 8*60*60 # 8(samp/s)*60(s/min)*60(min/hour) = samp/hour
     fiveSec = 8*5
 
     # Load data
-    data, _ = getInputLoadFile()
+    # data, _ = getInputLoadFile()
 
     # Get pickle List and featureNames list
     featureNameList = [[]]*len(classifierList)
@@ -324,11 +328,14 @@ def plotData(data,labels,classifierList,filteredPlot=0,secondsPlot=0):
 
 
 if __name__ == "__main__":
-    numClassifiers = int(get_user_input('Would you like 1 classifier (Binary or Multiclass) or both (enter 1 or 2): '))
+    # numClassifiers = int(get_user_input('Would you like 1 classifier (Binary or Multiclass) or both (enter 1 or 2): '))
+
+    numClassifiers = 1
 
     # Create list of classifiers
     if numClassifiers==1:
-        temp_clf = int(get_user_input("Select a classifier:\n1: Binary\n2: Multiclass\n:"))
+        # temp_clf = int(get_user_input("Select a classifier:\n1: Binary\n2: Multiclass\n:"))
+        temp_clf = 1
         while temp_clf != 1 and temp_clf !=2:
             temp_clf = get_user_input("Something went wrong. Enter the number 1 or 2.\n Select a classifier:\n1: Binary\n2: Multiclass):")
         if temp_clf == 1:
