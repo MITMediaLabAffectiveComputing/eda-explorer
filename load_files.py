@@ -2,6 +2,7 @@ import pandas as pd
 import scipy.signal as scisig
 import os
 import numpy as np
+import datetime
 
 
 def get_user_input(prompt):
@@ -121,13 +122,14 @@ def loadData_E4(filepath):
     return data[:min_length]
 
 def loadData_shimmer(data):
-    # data = pd.read_csv(filepath)#, sep='\t', skiprows=(0,1))
+
 
     orig_cols = data.columns
     rename_cols = {}
 
     for search, new_col in [['etime','Timestamp'],
                             ['time', 'Timestamp'],
+                            ['etime', 'Timestamp'],
                             ['eda', 'EDA'],
                             ['acc_x_low', 'AccelX'], ['acc_y_low', 'AccelY'], ['acc_z_low', 'AccelZ'],
                             ['Skin_Conductance', 'EDA']]:
@@ -136,7 +138,9 @@ def loadData_shimmer(data):
             continue
         rename_cols[orig[0]] = new_col
 
-    data.rename(columns=rename_cols, inplace=True)
+    data = data.rename(columns=rename_cols)
+
+    data['Timestamp'] = data['Timestamp'].apply(datetime.datetime.utcfromtimestamp)
 
     # TODO: Assuming no temperature is recorded
     data['Temp'] = 0
@@ -144,20 +148,54 @@ def loadData_shimmer(data):
     # Drop the units row and unnecessary columns
     data = data[data['Timestamp'] != 'ms']
     data.index = pd.to_datetime(data['Timestamp'], unit='ms')
-    # data = data[['AccelZ', 'AccelY', 'AccelX', 'Temp', 'EDA']]
-    data = data[['EDA']]
 
-    # for c in ['AccelZ', 'AccelY', 'AccelX', 'Temp', 'EDA']:
-    #     data[c] = pd.to_numeric(data[c])
+    data = data[['EDA']]
 
     # Convert to 8Hz
     data = data.resample("125L").mean()
-    data.interpolate(inplace=True)
+    data = data.interpolate()
 
     # Get the filtered data using a low-pass butterworth filter (cutoff:1hz, fs:8hz, order:6)
     data['filtered_eda'] = butter_lowpass_filter(data['EDA'], 1.0, 8, 6)
 
     return data
+
+import copy
+
+def loadData_p6(data):
+    data2 = copy.deepcopy(data)
+
+    if 'etime' in data2:
+        data2['Timestamp'] = data2['etime'].apply(datetime.datetime.utcfromtimestamp)
+    elif 'time' in data2:
+        data2['Timestamp'] = data2['time'].apply(datetime.datetime.utcfromtimestamp)
+    else:
+        print("no time column what!")
+
+    if 'eda' in data2:
+        data2['EDA'] = data2['eda']
+
+    # TODO: Assuming no temperature is recorded
+    # data['Temp'] = 0
+
+    # Drop the units row and unnecessary columns
+    # data = data[data['Timestamp'] != 'ms']
+    data2.index = pd.to_datetime(data2['Timestamp'], unit='ms')
+    # data = data[['AccelZ', 'AccelY', 'AccelX', 'Temp', 'EDA']]
+    data2 = data2[['EDA']]
+    data2['EDA'] = data2['EDA'] / np.nanmedian(data2['EDA'])
+
+    # for c in ['AccelZ', 'AccelY', 'AccelX', 'Temp', 'EDA']:
+    #     data[c] = pd.to_numeric(data[c])
+
+    # Convert to 8Hz
+    data2 = data2.resample("125L").mean()
+    data2 = data2.interpolate()
+
+    # Get the filtered data using a low-pass butterworth filter (cutoff:1hz, fs:8hz, order:6)
+    data2['filtered_eda'] = butter_lowpass_filter(data2['EDA'], 1.0, 8, 6)
+
+    return data2
 
 
 def loadData_getColNames(data_columns):
